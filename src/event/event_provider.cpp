@@ -4,18 +4,16 @@
 
 namespace valk::event {
     void EventProvider::deafen(const ListenerId id) {
-        auto& self = instance();
-
         std::shared_lock lock{MUTEX};
+        auto&            self = instance();
 
         auto& [listeners]                                      = self.m_events[id.event];
         listeners[static_cast<size_t>(id.listener_index)].deaf = true;
     }
 
     void EventProvider::undeafen(const ListenerId id) {
-        auto& self = instance();
-
         std::shared_lock lock{MUTEX};
+        auto&            self = instance();
 
         auto& [listeners]                                      = self.m_events[id.event];
         listeners[static_cast<size_t>(id.listener_index)].deaf = false;
@@ -34,13 +32,13 @@ namespace valk::event {
     EventProvider::ListenerId EventProvider::push_listener(
         std::unique_ptr<IListenerBase>&& listener, const EventId event_id
     ) {
-        auto& [listeners] = this->m_events[event_id];
         std::unique_lock lock{MUTEX};
-        const auto       id = ListenerId{
-                  .event = event_id, .listener_index = static_cast<uint32_t>(listeners.size())
+        auto& [listeners] = this->m_events[event_id];
+        const auto id     = ListenerId{
+                .event = event_id, .listener_index = static_cast<uint32_t>(listeners.size())
         };
 
-        listeners.emplace_back(false, std::move(listener));
+        listeners.emplace_back(std::move(Listener{false, std::move(listener)}));
         return id;
     }
 
