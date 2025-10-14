@@ -134,15 +134,7 @@ namespace valk::event {
             std::unique_ptr<IListenerBase> listener =
                 std::make_unique<CustomSpecialEventListener>();
 
-            std::unique_lock lock{event_list_mutex};
-            auto&            info = self.events[event_id];
-            const auto       id   = ListenerId{
-                        .event          = event_id,
-                        .listener_index = static_cast<uint32_t>(info.listeners.size())
-            };
-
-            info.listeners.emplace_back(false, std::move(listener));
-            return id;
+            return self.push_listener(std::move(listener), event_id);
         }
 
         template <auto ListenerCallback>
@@ -191,16 +183,12 @@ namespace valk::event {
             std::unique_ptr<IListenerBase> listener =
                 std::make_unique<CustomSpecialEventListener>(class_instance);
 
-            std::unique_lock lock{event_list_mutex};
-            auto&            info = self.events[event_id];
-            const auto       id   = ListenerId{
-                        .event          = event_id,
-                        .listener_index = static_cast<uint32_t>(info.listeners.size())
-            };
-
-            info.listeners.emplace_back(false, std::move(listener));
-            return id;
+            return self.push_listener(std::move(listener), event_id);
         }
+
+    private:
+        ListenerId
+        push_listener(std::unique_ptr<IListenerBase>&& listener, const EventId event_id);
 
     private:
         struct Listener {
