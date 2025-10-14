@@ -1,5 +1,6 @@
 #pragma once
 #include "base_event.hpp"
+#include "concurrentqueue.h"
 #include "entt/entt.hpp"
 #include "parallel_hashmap/phmap.h"
 #include "shared_recursive_mutex/shared_recursive_mutex.hpp"
@@ -43,9 +44,11 @@ namespace valk::event {
 
     class EventProvider {
     public:
-        using EventId                              = entt::id_type;
-        constexpr static EventId  INVALID_EVENT_ID = entt::null;
-        constexpr static uint32_t InvalidIndex     = std::numeric_limits<uint32_t>::max();
+        using EventId                                  = entt::id_type;
+        using EventQueueId                             = uint32_t;
+        constexpr static EventId      INVALID_EVENT_ID = entt::null;
+        constexpr static uint32_t     INVALID_INDEX    = std::numeric_limits<uint32_t>::max();
+        constexpr static EventQueueId INVALID_QUEUE_ID = std::numeric_limits<uint32_t>::max();
 
     private:
         class IListenerBase {
@@ -69,13 +72,33 @@ namespace valk::event {
 
             Ret invoke(Event&) override = 0;
 
+        protected:
             Class* instance{};
+        };
+
+        class IQueuedEvent {
+        public:
+            virtual ~IQueuedEvent() = default;
+
+            virtual void fire() = 0;
+        };
+
+        template <typename EventType> class QueuedEventFirer : public IQueuedEvent {
+        public:
+            explicit QueuedEventFirer(EventType&& event)
+                : m_event(std::forward<EventType>(event)) {}
+            ~QueuedEventFirer() override = default;
+
+            void fire() override { EventProvider::fire_event<EventType>(this->m_event); }
+
+        private:
+            EventType m_event;
         };
 
     public:
         struct ListenerId {
             const EventId  event{INVALID_EVENT_ID};
-            const uint32_t listener_index{InvalidIndex};
+            const uint32_t listener_index{INVALID_INDEX};
         };
 
         static EventProvider& instance() {
@@ -89,13 +112,13 @@ namespace valk::event {
             constexpr auto event_id = entt::type_hash<T>::value();
             using CastType          = SpecialEventListener<event_id, return_type, T>;
 
-            std::shared_lock lock{event_list_mutex};
-            auto&            info = self.events[event_id];
+            std::shared_lock lock{MUTEX};
+            auto&            info = self.m_events[event_id];
 
             for (auto& listener : info.listeners) {
                 if (listener.deaf)
                     continue;
-                auto callback = static_cast<CastType&>(*listener.listener);
+                auto callback = static_cast<CastType*>(listener.listener.get());
 
                 if constexpr (IsCancelable<T>::value) {
                     const auto cancel = callback->invoke(event_type);
@@ -186,9 +209,23 @@ namespace valk::event {
             return self.push_listener(std::move(listener), event_id);
         }
 
+        template <EventConcept EventType>
+        static void queue_event(const EventQueueId queue_id, EventType&& event) {
+            std::unique_ptr<IQueuedEvent> passed =
+                std::make_unique<QueuedEventFirer<EventType>>(std::move(event));
+            instance().queue_event_internal(queue_id, std::move(passed));
+        }
+
+        // This function applies events in the order they were queued
+        // This queue can be written to while we are flushing, it is up to the programmer to
+        // prevent this
+        static void fire_queued_events(EventQueueId queue_id);
+
     private:
         ListenerId
         push_listener(std::unique_ptr<IListenerBase>&& listener, const EventId event_id);
+
+        void queue_event_internal(EventQueueId queue_id, std::unique_ptr<IQueuedEvent>&& event);
 
     private:
         struct Listener {
@@ -201,8 +238,10 @@ namespace valk::event {
             std::vector<Listener> listeners{};
         };
 
-        static inline auto& event_list_mutex =
-            mtx::shared_recursive_mutex_t<EventProvider>::instance();
-        phmap::node_hash_map<EventId, EventInfo> events{};
+        static inline auto& MUTEX = mtx::shared_recursive_mutex_t<EventProvider>::instance();
+        phmap::flat_hash_map<EventId, EventInfo> m_events{};
+        phmap::flat_hash_map<
+            EventQueueId, moodycamel::ConcurrentQueue<std::unique_ptr<IQueuedEvent>>>
+            m_queues{};
     };
 } // namespace valk::event
