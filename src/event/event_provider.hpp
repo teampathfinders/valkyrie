@@ -216,6 +216,14 @@ namespace valk::event {
             instance().queue_event_internal(queue_id, std::move(passed));
         }
 
+        template <EventConcept EventType>
+        static void queue_event(const EventQueueId queue_id, const EventType& event) {
+            EventType                     event_copy = event;
+            std::unique_ptr<IQueuedEvent> passed =
+                std::make_unique<QueuedEventFirer<EventType>>(std::move(event_copy));
+            instance().queue_event_internal(queue_id, std::move(passed));
+        }
+
         // This function applies events in the order they were queued
         // This queue can be written to while we are flushing, it is up to the programmer to
         // prevent this
