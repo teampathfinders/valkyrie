@@ -22,6 +22,14 @@ CPMAddPackage("gh:Neargye/magic_enum#ecdeb1cea54d87b09bafe9999faf56654646209d")
 CPMAddPackage("gh:jbcoe/value_types#fd9a1b55f45c13cc65171449178769862b76ec95")
 CPMAddPackage("gh:greg7mdp/parallel-hashmap#88123934b46b77c3b6d80167382734cbff6eff74")
 
+CPMAddPackage(
+        NAME googletest
+        GITHUB_REPOSITORY google/googletest
+        GIT_TAG release-1.12.1
+        VERSION 1.12.1
+        OPTIONS "INSTALL_GTEST OFF" "gtest_force_shared_crt"
+)
+
 set(linked_libs spdlog::spdlog
         EnTT::EnTT
         shared_recursive_mutex
@@ -56,3 +64,21 @@ target_link_libraries(valkyrie_server PUBLIC ${linked_libs} ${PROJECT_NAME})
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<CONFIG:Debug>:VALK_DEBUG>
 )
+
+file(GLOB_RECURSE UNIT_TESTS CONFIGURE_DEPENDS "test/*.cpp")
+
+foreach (path_to_test IN LISTS UNIT_TESTS)
+    get_filename_component(test_name "${path_to_test}" NAME_WE)
+    add_executable(${test_name} ${path_to_test})
+    target_link_libraries(${test_name} PUBLIC ${PROJECT_NAME} ${linked_libs} gtest gtest_main)
+    target_include_directories(${test_name} PUBLIC "src")
+endforeach ()
+
+enable_testing()
+
+file(GLOB_RECURSE UNIT_TESTS CONFIGURE_DEPENDS "test/*.cpp")
+
+foreach (path_to_test IN LISTS UNIT_TESTS)
+    get_filename_component(test_name "${path_to_test}" NAME_WE)
+    add_test(${test_name} ${test_name})
+endforeach ()
