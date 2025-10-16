@@ -14,6 +14,22 @@ set(BUILD_SHARED_LIBS OFF)
 set(shared_recursive_mutex_OPT_BUILD_EXAMPLES OFF)
 set(shared_recursive_mutex_OPT_BUILD_TESTS OFF)
 
+
+set(RAKNET_ENABLE_SAMPLES ON CACHE BOOL "" FORCE)
+set(RAKNET_ENABLE_DLL ON CACHE BOOL "" FORCE)
+set(RAKNET_GENERATE_INCLUDE_ONLY_DIR ON CACHE BOOL "" FORCE)
+
+
+add_subdirectory(deps/raknet)
+target_compile_options(RakNetLibStatic PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/w>
+        $<$<CXX_COMPILER_ID:GNU>:-w -Wno-error>
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-w -Wno-error>
+)
+
+file(GLOB_RECURSE RAKNET_HEADERS CONFIGURE_DEPENDS
+        ${RAKNET_INCLUDE_DIRS})
+
 CPMAddPackage("gh:skypjack/entt#f931687ff04d435871ac9664bb299f71f2a8fafc")
 CPMAddPackage("gh:gabime/spdlog@1.15.3")
 CPMAddPackage("gh:KonanM/shared_recursive_mutex#48a3624169af3e7156820ea18639c6f4d88b9d0e")
@@ -35,6 +51,7 @@ set(linked_libs spdlog::spdlog
         shared_recursive_mutex
         concurrentqueue
         magic_enum
+        RakNetLibStatic
 )
 
 if (MSVC)
@@ -53,7 +70,7 @@ endif ()
 
 target_include_directories(${PROJECT_NAME} PUBLIC "src/")
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
-        "${parallel-hashmap_SOURCE_DIR}/")
+        "${parallel-hashmap_SOURCE_DIR}/" "${RAKNET_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${linked_libs})
 
 

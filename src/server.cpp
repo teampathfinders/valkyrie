@@ -1,10 +1,7 @@
 #include "server.hpp"
-#include <spdlog/spdlog.h>
+
+#include "net/transport/rak/rak_transport_layer.hpp"
 
 namespace valk {
-
-     Server::Server() {
-         SPDLOG_INFO("Hello world");
-     }
-
-} // valk
+    void Server::init() { this->m_layer = std::make_unique<rak::RakTransportLayer>(); }
+} // namespace valk

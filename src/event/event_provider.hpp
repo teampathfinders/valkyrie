@@ -45,7 +45,7 @@ namespace valk::event {
     class EventProvider {
     public:
         using EventId                                  = entt::id_type;
-        using EventQueueId                             = uint32_t;
+        using EventQueueId                             = entt::id_type;
         constexpr static EventId      INVALID_EVENT_ID = entt::null;
         constexpr static uint32_t     INVALID_INDEX    = std::numeric_limits<uint32_t>::max();
         constexpr static EventQueueId INVALID_QUEUE_ID = std::numeric_limits<uint32_t>::max();
@@ -216,17 +216,30 @@ namespace valk::event {
             instance().queue_event_internal(queue_id, std::move(passed));
         }
 
-        template <EventConcept EventType>
-        static void queue_event(const EventQueueId queue_id, const EventType& event) {
+        template <typename QueueId, EventConcept EventType>
+        static void queue_event(const EventType& event) {
             EventType                     event_copy = event;
             std::unique_ptr<IQueuedEvent> passed =
                 std::make_unique<QueuedEventFirer<EventType>>(std::move(event_copy));
-            instance().queue_event_internal(queue_id, std::move(passed));
+            instance().queue_event_internal(
+                entt::type_hash<QueueId>::value(), std::move(passed)
+            );
+        }
+
+        template <EventConcept EventType>
+        static void queue_event(const EventQueueId id, const EventType& event) {
+            EventType                     event_copy = event;
+            std::unique_ptr<IQueuedEvent> passed =
+                std::make_unique<QueuedEventFirer<EventType>>(std::move(event_copy));
+            instance().queue_event_internal(id, std::move(passed));
         }
 
         // This function applies events in the order they were queued
         // This queue can be written to while we are flushing, it is up to the programmer to
         // prevent this
+        template <typename QueueID> static void fire_queued_events() {
+            EventProvider::fire_queued_events(entt::type_hash<QueueID>::value());
+        }
         static void fire_queued_events(EventQueueId queue_id);
 
     private:

@@ -67,3 +67,19 @@ TEST(EventProvider, EventQueue) {
 
     ASSERT_EQ(state.fired_count, 5);
 }
+
+TEST(EventProvider, EventQueueTemplate) {
+    valk::SimpleEvent event{};
+    struct EventQueueTag {};
+    valk::event::EventProvider::queue_event<EventQueueTag>(event);
+    valk::event::EventProvider::queue_event<EventQueueTag>(event);
+    valk::event::EventProvider::queue_event<EventQueueTag>(event);
+    valk::event::EventProvider::queue_event<EventQueueTag>(event);
+    valk::event::EventProvider::queue_event<EventQueueTag>(event);
+
+    State state{};
+    valk::event::EventProvider::add_listener<&State::simple_event>(&state);
+    valk::event::EventProvider::fire_queued_events<EventQueueTag>();
+
+    ASSERT_EQ(state.fired_count, 5);
+}

@@ -1,0 +1,3 @@
+[submodule "deps/raknet"]
+	path = deps/raknet
+	url = https://github.com/xKingDark/RakNet.git
