@@ -38,7 +38,7 @@ namespace valk::event {
                 .event = event_id, .listener_index = static_cast<uint32_t>(listeners.size())
         };
 
-        listeners.emplace_back(std::move(Listener{false, std::move(listener)}));
+        listeners.emplace_back(Listener{false, std::move(listener)});
         return id;
     }
 

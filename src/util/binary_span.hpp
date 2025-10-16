@@ -1,14 +1,14 @@
 #pragma once
 
-#include "varint.hpp"
 #include "binary_traits.hpp"
+#include "varint.hpp"
 
 #include <cstdint>
+#include <expected>
 #include <fstream>
 #include <optional>
 #include <ranges>
 #include <vector>
-#include <expected>
 
 namespace valk {
     template <typename UserError> struct BinaryStreamError final : std::runtime_error {
@@ -53,7 +53,7 @@ namespace valk {
             explicit constexpr BinarySpanStorage(const BackingType& backing_type)
                 : backing_type(backing_type) {}
             explicit constexpr BinarySpanStorage(BackingType&& backing_type)
-                : backing_type(std::move(backing_type)) {}
+                : backing_type(backing_type) {}
             constexpr void skip_n(size_t count = 1);
 
         private:
@@ -84,7 +84,7 @@ namespace valk {
             constexpr void skip_n(size_t count = 1);
             constexpr void write_byte(uint8_t byte);
 
-            constexpr BinarySpan<false> to_static_size() const;
+            [[nodiscard]] constexpr BinarySpan<false> to_static_size() const;
 
         private:
             constexpr BinarySpan<true>& cast();
